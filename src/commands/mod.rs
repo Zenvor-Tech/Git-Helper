@@ -1,3 +1,4 @@
+pub mod commit;
 pub mod history;
 pub mod save;
 pub mod sync;
@@ -37,6 +38,9 @@ pub fn print_help() {
     println!("  {}     Stash/unstash changes", "stash".cyan());
     println!("           git-helper stash");
     println!("           git-helper stash pop");
+    println!();
+    println!("  {}     Generate AI commit message and commit", "commit".cyan());
+    println!("           git-helper commit --ai");
     println!();
     println!("  {}     Show this help message", "help".cyan());
     println!();

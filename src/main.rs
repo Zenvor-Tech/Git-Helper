@@ -6,7 +6,7 @@ use colored::Colorize;
 use std::process;
 use utils::git;
 
-const COMMANDS: &[&str] = &["save", "undo", "sync", "history", "log", "status", "st", "stash", "help", "version"];
+const COMMANDS: &[&str] = &["save", "undo", "sync", "history", "log", "status", "st", "stash", "commit", "help", "version"];
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -23,6 +23,7 @@ fn main() {
         "undo" => commands::undo::execute(&args[2..]),
         "sync" => commands::sync::execute(&args[2..]),
         "history" | "log" => commands::history::execute(&args[2..]),
+        "commit" => commands::commit::execute(&args[2..]),
         "status" | "st" => cmd_status(),
         "stash" => cmd_stash(&args[2..]),
         "help" | "--help" | "-h" => commands::print_help(),
@@ -80,18 +81,17 @@ fn cmd_status() {
     println!("{} {}", "On branch".bold(), branch.green().bold());
 
     if let Some((ahead, behind)) = git::count_ahead_behind() {
-        if ahead > 0 || behind > 0 {
-            println!(
-                "  {} ahead {}, behind {}",
-                "remote:".yellow(),
-                ahead,
-                behind
-            );
-        } else {
-            println!("  {} up to date", "remote:".green());
+        if ahead > 0 {
+            println!("  {} {} {}", "\u{2191}".cyan(), ahead, "commit(s) ahead".cyan());
+        }
+        if behind > 0 {
+            println!("  {} {} {}", "\u{2193}".yellow(), behind, "commit(s) behind".yellow());
+        }
+        if ahead == 0 && behind == 0 {
+            println!("  {} up to date with remote", "\u{2713}".green());
         }
     } else {
-        println!("  {} no upstream branch", "remote:".yellow());
+        println!("  {} no upstream branch", "\u{2716}".yellow());
     }
 
     println!("{}", "-".repeat(50));
@@ -99,23 +99,30 @@ fn cmd_status() {
     match git::run_capture(&["status", "--short"]) {
         Ok((out, _)) => {
             if out.is_empty() {
-                println!("Working tree clean.");
+                println!("{} Working tree clean.", "\u{2713}".green());
             } else {
                 for line in out.lines() {
                     let trimmed = line.trim();
-                    if trimmed.starts_with('?') {
-                        println!("{}  {}", "?".yellow(), &line[1..].trim());
-                    } else if trimmed.starts_with('M') {
-                        println!("{}  {}", "M".cyan(), &line[1..].trim());
-                    } else if trimmed.starts_with('A') {
-                        println!("{}  {}", "A".green(), &line[1..].trim());
-                    } else if trimmed.starts_with('D') {
-                        println!("{}  {}", "D".red(), &line[1..].trim());
-                    } else if trimmed.starts_with('R') {
-                        println!("{}  {}", "R".magenta(), &line[1..].trim());
-                    } else {
-                        println!("{}", line);
+                    if trimmed.is_empty() {
+                        continue;
                     }
+                    let (status_chars, file) = if trimmed.len() > 2 {
+                        (&trimmed[..2], trimmed[2..].trim())
+                    } else {
+                        (trimmed, "")
+                    };
+                    let staged = status_chars.chars().nth(0).unwrap_or(' ');
+                    let working = status_chars.chars().nth(1).unwrap_or(' ');
+
+                    let status_display = match (staged, working) {
+                        ('?', '?') => format!("{}{}", staged, working).yellow(),
+                        ('M', ' ') | (' ', 'M') | ('M', 'M') => format!("{}{}", staged, working).cyan(),
+                        ('A', ' ') => format!("{}{}", staged, working).green(),
+                        ('D', ' ') | (' ', 'D') => format!("{}{}", staged, working).red(),
+                        ('R', ' ') => format!("{}{}", staged, working).magenta(),
+                        _ => format!("{}{}", staged, working).normal(),
+                    };
+                    println!("{}  {}", status_display, file);
                 }
             }
         }
