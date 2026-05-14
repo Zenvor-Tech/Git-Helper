@@ -1,0 +1,11 @@
+[package]
+name = "git-helper"
+version = "2.0.0"
+edition = "2021"
+description = "A lightweight CLI tool that simplifies common Git workflows into short, easy-to-remember commands."
+
+[dependencies]
+colored = "3"
+
+[dev-dependencies]
+tempfile = "3"
