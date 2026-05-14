@@ -60,7 +60,7 @@ git-helper <command> [options] [args]
 ### Commands
 
 | Command | Description |
-|---|---|
+| ------ | --- |
 | `save <message>` | Stage all, commit, and push |
 | `undo [count]` | Undo last commit(s), keep changes staged |
 | `sync` | Pull then push |

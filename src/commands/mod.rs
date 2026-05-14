@@ -40,6 +40,10 @@ pub fn print_help() {
     println!();
     println!("  {}     Show this help message", "help".cyan());
     println!();
+    println!("{}", "ALIASES:");
+    println!("  history = log");
+    println!("  status  = st");
+    println!();
     println!("{}", "EXAMPLES:");
     println!("  git-helper save \"feat: add user authentication\"");
     println!("  git-helper undo");

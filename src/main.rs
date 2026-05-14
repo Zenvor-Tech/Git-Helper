@@ -6,6 +6,8 @@ use colored::Colorize;
 use std::process;
 use utils::git;
 
+const COMMANDS: &[&str] = &["save", "undo", "sync", "history", "log", "status", "st", "stash", "help", "version"];
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
@@ -27,15 +29,48 @@ fn main() {
         "version" | "--version" | "-v" => print_version(),
         cmd => {
             eprintln!(
-                "{} unknown command '{}'. Use 'git-helper help' to see available commands.",
+                "{} unknown command '{}'.",
                 "error:".red().bold(),
                 cmd
             );
+            if let Some(suggestion) = suggest_command(cmd) {
+                eprintln!("{} Did you mean '{}'?", "hint:".cyan(), suggestion.cyan());
+            }
+            eprintln!("Use 'git-helper help' to see available commands.");
             process::exit(1);
         }
     };
 
     result
+}
+
+fn levenshtein(a: &str, b: &str) -> usize {
+    let b_len = b.len();
+    let mut prev: Vec<usize> = (0..=b_len).collect();
+    let mut curr: Vec<usize> = vec![0; b_len + 1];
+
+    for (i, ca) in a.chars().enumerate() {
+        curr[0] = i + 1;
+        for (j, cb) in b.chars().enumerate() {
+            let cost = if ca == cb { 0 } else { 1 };
+            curr[j + 1] = (curr[j] + 1)
+                .min(prev[j + 1] + 1)
+                .min(prev[j] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+    prev[b_len]
+}
+
+fn suggest_command(input: &str) -> Option<&'static str> {
+    let threshold = if input.len() <= 3 { 1 } else { 2 };
+
+    COMMANDS
+        .iter()
+        .filter(|&&c| c != input)
+        .min_by_key(|&&c| levenshtein(input, c))
+        .filter(|&&c| levenshtein(input, c) <= threshold)
+        .copied()
 }
 
 fn cmd_status() {
@@ -172,6 +207,16 @@ fn cmd_stash(args: &[String]) {
         }
         other => {
             eprintln!("unknown stash subcommand: '{}'", other);
+            let stash_cmds = ["pop", "list", "ls", "drop", "apply", "clear"];
+            let suggestion = stash_cmds
+                .iter()
+                .filter(|&&c| c != other)
+                .min_by_key(|&&c| levenshtein(other, c))
+                .filter(|&&c| levenshtein(other, c) <= 2)
+                .copied();
+            if let Some(s) = suggestion {
+                eprintln!("{} Did you mean '{}'?", "hint:".cyan(), s.cyan());
+            }
             print_stash_usage();
             process::exit(1);
         }
